@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BookForm } from "./book-form";
+import { SeatMeter, StatusBadge, accentVars, subjectEmoji } from "./ui";
 
 export const dynamic = "force-dynamic";
 
 const fmt = (d: Date) =>
   d.toLocaleString("en-SG", {
-    weekday: "short",
+    weekday: "long",
     day: "numeric",
     month: "short",
     hour: "numeric",
@@ -34,10 +35,9 @@ export default async function Home({
   if (parents.length === 0) {
     return (
       <>
-        <h1>No data yet</h1>
+        <h1>Nothing here yet 🌱</h1>
         <p className="sub">
-          Run <code>npm run db:up &amp;&amp; npm run db:reset</code> to create and seed
-          the database.
+          Run <code>make setup</code> to create and seed the database, then refresh.
         </p>
       </>
     );
@@ -45,9 +45,7 @@ export default async function Home({
 
   const parent = parents.find((p) => p.id === parentId) ?? parents[0];
 
-  const classes = await prisma.trialClass.findMany({
-    orderBy: { startsAt: "asc" },
-  });
+  const classes = await prisma.trialClass.findMany({ orderBy: { startsAt: "asc" } });
 
   const myBookings = await prisma.booking.findMany({
     where: { student: { parentId: parent.id } },
@@ -55,71 +53,90 @@ export default async function Home({
     include: { student: true, class: true },
   });
 
+  const firstName = parent.name.split(" ")[0];
+
   return (
     <>
-      <h1>Book a trial class</h1>
+      <h1>Hello, {firstName} 👋</h1>
       <p className="sub">
-        Signed in as <strong>{parent.name}</strong> — no auth, identity is a{" "}
-        <code>?parentId=</code> stub.
+        Pick a trial class for your child. Seats are confirmed once payment goes
+        through — you&apos;ll see the result straight away.
       </p>
 
-      <div className="card">
-        <strong>Switch parent:</strong>{" "}
+      <div className="card switcher">
+        <span className="label">Viewing as</span>
         {parents.map((p) => (
-          <span key={p.id}>
-            <Link href={`/?parentId=${p.id}`}>
-              {p.id === parent.id ? <strong>{p.name}</strong> : p.name}
-            </Link>{" "}
-          </span>
+          <Link
+            key={p.id}
+            href={`/?parentId=${p.id}`}
+            className="chip"
+            aria-current={p.id === parent.id}
+          >
+            {p.name}
+          </Link>
         ))}
       </div>
 
-      <h2>Available classes</h2>
-      {classes.map((c) => {
-        const remaining = c.capacity - c.confirmedCount;
-        const full = remaining <= 0;
+      <h2>
+        Upcoming trial classes <span className="count">{classes.length} available</span>
+      </h2>
+
+      {classes.map((c, i) => {
+        const full = c.capacity - c.confirmedCount <= 0;
         return (
-          <div className="card" key={c.id}>
+          <div className="card accented" key={c.id} style={accentVars(i)}>
             <div className="card-head">
               <div>
-                <strong>{c.subject}</strong>
-                <div className="seats">{fmt(c.startsAt)}</div>
+                <div className="subject">
+                  <span className="subject-emoji" aria-hidden="true">
+                    {subjectEmoji(c.subject)}
+                  </span>
+                  {c.subject}
+                </div>
+                <div className="when">{fmt(c.startsAt)}</div>
               </div>
-              <span className={`seats ${full ? "full" : ""}`}>
-                {c.confirmedCount}/{c.capacity} confirmed ·{" "}
-                {full ? "FULL" : `${remaining} seat${remaining === 1 ? "" : "s"} left`}
-              </span>
+              <SeatMeter confirmed={c.confirmedCount} capacity={c.capacity} />
             </div>
             <BookForm classId={c.id} students={parent.students} full={full} />
           </div>
         );
       })}
 
-      <h2>Your bookings</h2>
+      <h2>
+        Your bookings <span className="count">{myBookings.length} total</span>
+      </h2>
+
       {myBookings.length === 0 ? (
-        <p className="sub">Nothing booked yet.</p>
+        <p className="empty">No bookings yet — pick a class above to get started.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Class</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {myBookings.map((b) => (
-              <tr key={b.id}>
-                <td>{b.student.name}</td>
-                <td>{b.class.subject}</td>
-                <td>
-                  <span className={`badge ${b.status}`}>{b.status}</span>
-                </td>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Class</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {myBookings.map((b) => (
+                <tr key={b.id}>
+                  <td>{b.student.name}</td>
+                  <td>{b.class.subject}</td>
+                  <td>
+                    <StatusBadge status={b.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <p className="subtle-note">
+        Demo build — no sign-in. Identity is a <code>?parentId=</code> stub, and the
+        payment step is mocked so outcomes can be forced.
+      </p>
     </>
   );
 }

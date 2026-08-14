@@ -140,7 +140,9 @@ Every test that touches seats also asserts **no drift** — that `confirmedCount
 - **Auth** — identity is a `?parentId=` query-param stub. Both pages are open to anyone.
 - **Seat holds with a payment-window timer** — the first thing I'd add. Reaching payment reserves nothing.
 - **Real payment provider and real refund execution** — `src/lib/payment.ts` is a mock with a forced-outcome parameter so the race and the failure path are deterministic on camera.
-- **Notifications, waitlists, visual polish.**
+- **Notifications and waitlists.**
+
+The UI is styled — light and warm, since parents are the audience — but it is still two plain pages. `docs/PRD.md` §9 listed visual polish as a cut; that was revisited, and the styling was added afterwards without touching the booking logic. Status colors use a reserved four-role palette (good/warning/serious/critical), validated for colorblind separation and contrast, and every status ships an icon and a text label so meaning never rests on hue alone.
 
 ## Known gaps
 

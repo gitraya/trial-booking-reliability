@@ -42,12 +42,23 @@ export function BookForm({
           <option value="random">Random (~85% success)</option>
         </select>
 
-        <button type="submit" disabled={pending || students.length === 0}>
-          {pending ? "Processing…" : full ? "Book anyway (class is full)" : "Book & pay"}
+        <button
+          type="submit"
+          className={full ? "secondary" : ""}
+          disabled={pending || students.length === 0}
+        >
+          {pending ? "Processing…" : full ? "Join anyway (class is full)" : "Book & pay"}
         </button>
       </form>
 
-      {state && <p className={`msg ${state.tone}`}>{state.message}</p>}
+      {state && (
+        <p className={`msg ${state.tone}`}>
+          <span className="icon" aria-hidden="true">
+            {state.tone === "ok" ? "✓" : "!"}
+          </span>
+          {state.message}
+        </p>
+      )}
     </>
   );
 }

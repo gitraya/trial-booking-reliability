@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { CancelButton } from "../cancel-button";
+import { SeatMeter, StatusBadge, accentVars, subjectEmoji } from "../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -24,79 +25,89 @@ export default async function Admin() {
 
   return (
     <>
-      <h1>Admin — rosters</h1>
+      <h1>Class rosters 📋</h1>
       <p className="sub">
-        Roster = CONFIRMED bookings only. Also available as JSON at{" "}
+        Confirmed students only. The same data is available as JSON at{" "}
         <code>GET /api/classes/[id]/roster</code>.
       </p>
 
-      {classes.map((c) => {
+      {classes.map((c, i) => {
         const confirmed = c.bookings.filter((b) => b.status === "CONFIRMED");
         const others = c.bookings.filter((b) => b.status !== "CONFIRMED");
         const inSync = confirmed.length === c.confirmedCount;
 
         return (
-          <div className="card" key={c.id}>
+          <div className="card accented" key={c.id} style={accentVars(i)}>
             <div className="card-head">
               <div>
-                <strong>{c.subject}</strong>
-                <div className="seats">
+                <div className="subject">
+                  <span className="subject-emoji" aria-hidden="true">
+                    {subjectEmoji(c.subject)}
+                  </span>
+                  {c.subject}
+                </div>
+                <div className="when">
                   <code>{c.id}</code>
                 </div>
               </div>
-              <span className="seats">
-                {c.confirmedCount}/{c.capacity} confirmed
-              </span>
+              <SeatMeter confirmed={c.confirmedCount} capacity={c.capacity} />
             </div>
 
-            <p className={inSync ? "insync" : "drift"}>
+            <div className={`recon ${inSync ? "insync" : "drift"}`}>
+              <span aria-hidden="true">{inSync ? "✓" : "⚠"}</span>
               {inSync
-                ? `✓ reconciled — counter ${c.confirmedCount} matches ${confirmed.length} confirmed bookings`
-                : `⚠ DRIFT — counter says ${c.confirmedCount}, actual confirmed bookings ${confirmed.length}`}
-            </p>
+                ? `Reconciled — counter ${c.confirmedCount} matches ${confirmed.length} confirmed booking${confirmed.length === 1 ? "" : "s"}`
+                : `DRIFT — counter says ${c.confirmedCount}, actual confirmed bookings ${confirmed.length}`}
+            </div>
 
             {confirmed.length === 0 ? (
-              <p className="sub">No one confirmed yet.</p>
+              <p className="empty">No one has confirmed a seat yet.</p>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Student</th>
-                    <th>Parent</th>
-                    <th>Email</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {confirmed.map((b) => (
-                    <tr key={b.id}>
-                      <td>{b.student.name}</td>
-                      <td>{b.student.parent.name}</td>
-                      <td>{b.student.parent.email}</td>
-                      <td>
-                        <CancelButton bookingId={b.id} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {others.length > 0 && (
-              <>
-                <h2>Non-confirmed attempts</h2>
+              <div className="table-wrap">
                 <table>
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Parent</th>
+                      <th>Email</th>
+                      <th />
+                    </tr>
+                  </thead>
                   <tbody>
-                    {others.map((b) => (
+                    {confirmed.map((b) => (
                       <tr key={b.id}>
                         <td>{b.student.name}</td>
-                        <td>
-                          <span className={`badge ${b.status}`}>{b.status}</span>
+                        <td>{b.student.parent.name}</td>
+                        <td>{b.student.parent.email}</td>
+                        <td style={{ textAlign: "right" }}>
+                          <CancelButton bookingId={b.id} />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {others.length > 0 && (
+              <>
+                <h2>
+                  Other attempts <span className="count">{others.length}</span>
+                </h2>
+                <div className="table-wrap">
+                  <table>
+                    <tbody>
+                      {others.map((b) => (
+                        <tr key={b.id}>
+                          <td>{b.student.name}</td>
+                          <td style={{ textAlign: "right" }}>
+                            <StatusBadge status={b.status} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </>
             )}
           </div>

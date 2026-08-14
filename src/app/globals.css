@@ -1,96 +1,612 @@
+/* Light, cheerful theme for a tutoring product.
+ *
+ * Deliberately light-only: this is a parent-facing education app, and the
+ * warm/sunny palette is the point. No dark-mode flip.
+ *
+ * Status colors are the reserved four (good/warning/serious/critical) and are
+ * never used for anything decorative. Every status color ships with an icon AND
+ * a text label, so meaning never rests on hue alone.
+ */
+
 :root {
-  --bg: #fbfbfa;
-  --fg: #1c1b19;
-  --muted: #6b6862;
-  --line: #e3e0da;
+  color-scheme: light;
+
+  /* Surfaces */
+  --page: #fffdf7;
+  --page-tint-a: #eaf3ff;
+  --page-tint-b: #fff4dd;
   --card: #ffffff;
-  --ok: #1a7f4b;
-  --err: #b3261e;
-  --warn: #8a5a00;
+  --card-soft: #fbfaf6;
+  --line: #eae7dd;
+  --line-strong: #d8d4c7;
+
+  /* Ink */
+  --ink: #21201c;
+  --ink-2: #55534c;
+  --ink-muted: #8a877e;
+
+  /* Subject accents — validated categorical slots 1–3 */
+  --accent-1: #2a78d6;
+  --accent-2: #eb6834;
+  --accent-3: #1baf7a;
+  --brand: #2a78d6;
+  --brand-dark: #1c5cab;
+  --brand-wash: #e8f1fd;
+
+  /* Reserved status palette */
+  --good: #0ca30c;
+  --good-ink: #056605;
+  --good-wash: #e7f7e7;
+  --warning: #fab219;
+  --warning-ink: #7a5200;
+  --warning-wash: #fff4dc;
+  --serious: #ec835a;
+  --serious-ink: #91411c;
+  --serious-wash: #fdeee7;
+  --critical: #d03b3b;
+  --critical-ink: #8f2020;
+  --critical-wash: #fdeaea;
+
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(33, 32, 28, 0.05), 0 6px 18px rgba(33, 32, 28, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #16150f;
-    --fg: #f2efe6;
-    --muted: #a8a294;
-    --line: #33312a;
-    --card: #1e1d16;
-    --ok: #6cd39a;
-    --err: #ff9a8f;
-    --warn: #e8bd6a;
-  }
+* {
+  box-sizing: border-box;
 }
-
-* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(1100px 480px at 12% -10%, var(--page-tint-a), transparent 65%),
+    radial-gradient(900px 420px at 92% 0%, var(--page-tint-b), transparent 60%),
+    var(--page);
+  font:
+    15px/1.6 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-main { max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+main {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 5rem;
+}
 
-h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
-h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
-p.sub { color: var(--muted); margin: 0 0 1.5rem; }
+/* ---------- Header / nav ---------- */
 
-nav { display: flex; gap: 1rem; margin-bottom: 1.5rem; font-size: .9rem; }
-nav a { color: var(--fg); }
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: linear-gradient(140deg, var(--accent-1), #59a0f0);
+  color: #fff;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(42, 120, 214, 0.32);
+}
+
+nav.tabs {
+  display: flex;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.25rem;
+}
+
+nav.tabs a {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+nav.tabs a:hover {
+  background: var(--brand-wash);
+  color: var(--brand-dark);
+}
+
+/* ---------- Headings ---------- */
+
+h1 {
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35rem;
+}
+
+h2 {
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+  margin: 2.25rem 0 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+h2 .count {
+  font-weight: 500;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+/* A heading nested inside a card is a sub-section, not a peer of the page
+   headings — step it down so it doesn't compete. */
+.card h2 {
+  font-size: 0.79rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  margin: 1.4rem 0 0.55rem;
+}
+
+p.sub {
+  color: var(--ink-2);
+  margin: 0 0 1.75rem;
+  max-width: 60ch;
+}
+
+/* ---------- Cards ---------- */
 
 .card {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-  margin-bottom: .85rem;
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 0.9rem;
+  box-shadow: var(--shadow);
+}
+
+/* Subject accent stripe. Colour cycles across slots 1–3; the subject name
+   beside it is always visible, which is the required relief for the aqua
+   slot's sub-3:1 contrast. */
+.card.accented {
+  padding-left: 1.35rem;
+  overflow: hidden;
+}
+
+.card.accented::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent, var(--accent-1));
 }
 
 .card-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
 }
 
-.seats { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem; }
-.seats.full { color: var(--err); }
-
-form.book { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .85rem; }
-
-select, button {
-  font: inherit;
-  padding: .4rem .6rem;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--bg);
-  color: var(--fg);
+.subject {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 650;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
 }
-button { cursor: pointer; }
-button:disabled { opacity: .5; cursor: not-allowed; }
 
-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
-th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); }
-th { color: var(--muted); font-weight: 500; }
+.subject-emoji {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--accent-wash, var(--brand-wash));
+  font-size: 0.95rem;
+}
 
-.msg { padding: .5rem .7rem; border-radius: 7px; margin-top: .6rem; font-size: .9rem; }
-.msg.ok { color: var(--ok); border: 1px solid var(--ok); }
-.msg.error { color: var(--err); border: 1px solid var(--err); }
+.when {
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  margin-top: 0.15rem;
+}
+
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  background: var(--card-soft);
+  border: 1px dashed var(--line-strong);
+  box-shadow: none;
+}
+
+.switcher .label {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  margin-right: 0.2rem;
+}
+
+.chip {
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.chip:hover {
+  border-color: var(--brand);
+  color: var(--brand-dark);
+}
+
+.chip[aria-current="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  font-weight: 550;
+}
+
+/* ---------- Seat meter ----------
+   Discrete unit marks, one per seat: filled = confirmed, hollow = open.
+   2px gaps between marks, rounded ends. Always accompanied by the text
+   readout below, so the meter is never the only carrier of the number. */
+
+.seat-block {
+  text-align: right;
+}
+
+.seat-meter {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+  margin-bottom: 0.3rem;
+}
+
+.seat {
+  width: 22px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.seat.filled {
+  background: var(--accent, var(--accent-1));
+}
+
+.seat-label {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.seat-label strong {
+  color: var(--ink);
+}
+
+.seat-label.full {
+  color: var(--serious-ink);
+  font-weight: 550;
+}
+
+/* ---------- Forms ---------- */
+
+form.book {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid var(--line);
+}
+
+select,
+button {
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  padding: 0.45rem 0.7rem;
+  background: #fff;
+  color: var(--ink);
+}
+
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 550;
+}
+
+button[type="submit"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(42, 120, 214, 0.3);
+}
+
+button[type="submit"]:hover:not(:disabled) {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
+}
+
+/* A full class can still be attempted — that path is how the race gets
+   demonstrated — but it shouldn't look like the happy path. */
+button[type="submit"].secondary {
+  background: #fff;
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+  box-shadow: none;
+}
+
+button[type="submit"].secondary:hover:not(:disabled) {
+  background: var(--serious-wash);
+  border-color: var(--serious);
+  color: var(--serious-ink);
+}
+
+button.ghost {
+  background: #fff;
+  color: var(--ink-2);
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.65rem;
+  box-shadow: none;
+}
+
+button.ghost:hover:not(:disabled) {
+  border-color: var(--critical);
+  color: var(--critical-ink);
+  background: var(--critical-wash);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- Messages ---------- */
+
+.msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 11px;
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  border: 1px solid;
+}
+
+.msg .icon {
+  flex: none;
+  font-weight: 700;
+}
+
+.msg.ok {
+  background: var(--good-wash);
+  border-color: color-mix(in srgb, var(--good) 40%, transparent);
+  color: var(--good-ink);
+}
+
+.msg.error {
+  background: var(--critical-wash);
+  border-color: color-mix(in srgb, var(--critical) 40%, transparent);
+  color: var(--critical-ink);
+}
+
+/* ---------- Status badges (icon + label, never colour alone) ---------- */
 
 .badge {
-  font-size: .75rem;
-  padding: .15rem .45rem;
-  border-radius: 5px;
-  border: 1px solid var(--line);
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.76rem;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
 }
-.badge.CONFIRMED { color: var(--ok); border-color: var(--ok); }
-.badge.PAYMENT_FAILED, .badge.SEAT_UNAVAILABLE { color: var(--err); border-color: var(--err); }
-.badge.PENDING_PAYMENT { color: var(--warn); border-color: var(--warn); }
 
-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; }
-.drift { color: var(--err); font-weight: 600; }
-.insync { color: var(--ok); }
+.badge .icon {
+  font-size: 0.72rem;
+}
+
+.badge.good {
+  background: var(--good-wash);
+  border-color: color-mix(in srgb, var(--good) 45%, transparent);
+  color: var(--good-ink);
+}
+
+.badge.warning {
+  background: var(--warning-wash);
+  border-color: color-mix(in srgb, var(--warning) 60%, transparent);
+  color: var(--warning-ink);
+}
+
+.badge.serious {
+  background: var(--serious-wash);
+  border-color: color-mix(in srgb, var(--serious) 55%, transparent);
+  color: var(--serious-ink);
+}
+
+.badge.critical {
+  background: var(--critical-wash);
+  border-color: color-mix(in srgb, var(--critical) 45%, transparent);
+  color: var(--critical-ink);
+}
+
+.badge.neutral {
+  background: var(--card-soft);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+
+/* ---------- Tables ---------- */
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.91rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+thead th {
+  background: var(--card-soft);
+  color: var(--ink-muted);
+  font-weight: 550;
+  font-size: 0.79rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover td {
+  background: #fcfcfa;
+}
+
+/* ---------- Reconciliation banner ---------- */
+
+.recon {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.83rem;
+  margin: 0.7rem 0 0.9rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 9px;
+  width: fit-content;
+}
+
+.recon.insync {
+  background: var(--good-wash);
+  color: var(--good-ink);
+}
+
+.recon.drift {
+  background: var(--critical-wash);
+  color: var(--critical-ink);
+  font-weight: 600;
+}
+
+/* ---------- Misc ---------- */
+
+.empty {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: var(--card-soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.08em 0.35em;
+}
+
+.subtle-note {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  margin-top: 1.5rem;
+}
+
+/* ---------- Phones ----------
+   Parents book on their phone. Stack the card header and give the form
+   controls full width so the tap targets are comfortable. */
+
+@media (max-width: 560px) {
+  main {
+    padding: 1rem 0.9rem 3.5rem;
+  }
+
+  h1 {
+    font-size: 1.45rem;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .seat-block {
+    text-align: left;
+  }
+
+  .seat-meter {
+    justify-content: flex-start;
+  }
+
+  .seat {
+    width: 30px;
+  }
+
+  form.book {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  form.book select,
+  form.book button {
+    width: 100%;
+    padding-block: 0.55rem;
+  }
+}

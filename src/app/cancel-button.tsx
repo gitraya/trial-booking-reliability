@@ -12,11 +12,16 @@ export function CancelButton({ bookingId }: { bookingId: string }) {
   return (
     <form action={formAction}>
       <input type="hidden" name="bookingId" value={bookingId} />
-      <button type="submit" disabled={pending}>
-        {pending ? "…" : "Cancel"}
+      <button type="submit" className="ghost" disabled={pending}>
+        {pending ? "…" : "Cancel seat"}
       </button>
       {state?.tone === "error" && (
-        <span className="msg error">{state.message}</span>
+        <span className="msg error">
+          <span className="icon" aria-hidden="true">
+            !
+          </span>
+          {state.message}
+        </span>
       )}
     </form>
   );
