@@ -100,16 +100,20 @@ curl "http://localhost:3000/api/classes/<classId>/roster" | jq
 
 Returns the confirmed roster plus a `reconciliation` block comparing the denormalized counter against an actual `COUNT(*)` — the drift check, exposed so the invariant can be verified by hand.
 
-### Deploying
+### Deployment — built, but not deployed
 
-Ships as a single container from the repo's `Dockerfile`, built by Coolify from source. **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** has the full walkthrough; the short version:
+**There is no live URL.** I ran out of time before putting this on a server, so treat this section as deployment-*ready*, not deployed. What exists is real and verified locally; what is missing is a running instance.
+
+Verified: the image builds, `prisma migrate deploy` runs at container start, the app serves from the container against Postgres, and the health check returns `200` with the database up and `503` with it down. Not verified: anything on an actual VPS. The Coolify walkthrough in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** is written from the container's actual requirements, but I have never executed it end to end against a real Coolify instance.
+
+The shape of it:
 
 - One required variable: `DATABASE_URL`. Port `3000`, health check `/api/health`.
 - `prisma migrate deploy` runs on every container start, before the server accepts traffic. A schema change ships by committing a migration.
 - The health check queries the database, so a container that can't reach Postgres reports `503` instead of quietly serving errors.
 - The seed script is **not** in the runtime image and refuses to run against a non-local database — it deletes every row before inserting.
 
-Build and run it locally the way production does:
+Run the production image locally — this is what I actually verified:
 
 ```bash
 make docker-build
@@ -118,7 +122,7 @@ make docker-run     # http://localhost:3100, against the local Postgres
 
 ### CI
 
-`.github/workflows/ci.yml` runs on every push and PR: typecheck, build, and the full suite against a real Postgres 18 service container. It also asserts that **`booking_active_unique` exists in the database with the right predicate** — that index is hand-written into the migration SQL, so it is the one piece of the schema that could silently disappear when migrations are regenerated. A second job builds the production image, so a broken `Dockerfile` is caught before it reaches the VPS.
+`.github/workflows/ci.yml` runs on every push and PR: typecheck, build, and the full suite against a real Postgres 18 service container. It also asserts that **`booking_active_unique` exists in the database with the right predicate** — that index is hand-written into the migration SQL, so it is the one piece of the schema that could silently disappear when migrations are regenerated. A second job builds the production image, so a broken `Dockerfile` is caught in CI.
 
 ---
 ---
@@ -294,9 +298,11 @@ Every test that touches seats also asserts **no drift** — that `confirmedCount
 
 ## Time spent
 
-> **TODO before submitting — fill in actual wall-clock time.** Budget was 3.5h (`docs/PRD.md` §11).
-> A rough split to adapt: schema + migration + seed · booking flow and duplicate guard · mock payment
-> and the atomic confirm · roster and admin · tests · README and AI_USAGE · video.
+**3 hours 30 minutes**, against a 4-hour cap.
+
+Most of it went where the brief said it should: the data model, the atomic seat claim, and the tests. The two most valuable stretches were not writing code — they were deliberately breaking the implementation to check the tests actually failed, which caught two real concurrency bugs (see `AI_USAGE.md`).
+
+What the budget did not stretch to: deploying anywhere, and the gaps listed under Known gaps and Next steps.
 
 ## Assumptions
 
@@ -311,6 +317,7 @@ Every test that touches seats also asserts **no drift** — that `confirmedCount
 - **Seat holds with a payment-window timer** — the first thing I'd add. Reaching payment reserves nothing.
 - **Real payment provider and real refund execution** — `src/lib/payment.ts` is a mock with a forced-outcome parameter so the race and the failure path are deterministic on camera.
 - **Notifications and waitlists.**
+- **A live deployment.** The container and CI are done and verified locally; putting it on a server is what the clock ran out on. See the deployment section above.
 
 The UI is styled — light and warm, since parents are the audience — but it is still two plain pages. `docs/PRD.md` §9 listed visual polish as a cut; that was revisited, and the styling was added afterwards without touching the booking logic. Status colors use a reserved four-role palette (good/warning/serious/critical), validated for colorblind separation and contrast, and every status ships an icon and a text label so meaning never rests on hue alone.
 
@@ -333,5 +340,7 @@ The UI is styled — light and warm, since parents are the audience — but it i
 3. Real auth, replacing the query-param stub.
 4. A database trigger maintaining `confirmedCount`, making the invariant unbreakable rather than conventional.
 5. Waitlist, fed by `SEAT_UNAVAILABLE` and cancellations.
+6. **Actually deploy it.** The container and the Coolify walkthrough are ready and verified locally; only a running instance is missing.
+7. Tests at the HTTP layer. Everything automated today targets `src/lib`; the routes and server actions were checked by hand.
 
 See `docs/PRD.md` for the full design rationale and `AI_USAGE.md` for how AI was used.

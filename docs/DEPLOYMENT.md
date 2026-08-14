@@ -1,5 +1,11 @@
 # Deploying to Coolify
 
+> **Status: not executed.** This app is not deployed anywhere. The container itself is
+> verified — it builds, migrates and serves against Postgres locally, and the health check
+> behaves correctly in both directions — but these Coolify steps have never been run against
+> a real instance. They are derived from what the container actually needs, not from a
+> deployment I completed. Expect to adjust wording as you go.
+
 The app ships as a single container built from the repo's `Dockerfile`. Coolify builds it from source on each deploy; there is no registry in the loop.
 
 Coolify's UI wording shifts between releases, so treat the labels below as "find the field that does this" rather than exact strings. Everything specific to this app — the port, the health path, the one required variable — is exact.
