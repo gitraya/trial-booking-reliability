@@ -10,22 +10,26 @@ Stack: Next.js 16 (App Router) · React 19 · TypeScript 7 · Prisma 7 · Postgr
 
 ## Run it
 
+Requires Docker and Node 20+.
+
 ```bash
-npm install
-npm run db:up          # Postgres 18 via Docker Compose, waits until healthy
-npm run db:migrate     # applies the migration (incl. the hand-written partial index)
-npm run seed           # seeds the three fixture classes
-npm run dev            # http://localhost:3000
+make setup     # install, start Postgres, migrate, seed — clean checkout to ready
+make dev       # http://localhost:3000
+```
+
+Then:
+
+```bash
+make test      # 17 tests against real Postgres
+make demo      # live last-seat race, prints the outcome
+make           # list every target
 ```
 
 `.env` is committed on purpose — it holds only the local Docker Compose credentials, so the above works with zero configuration.
 
-```bash
-npm test               # 17 tests against real Postgres
-npm run demo:race      # live last-seat race, prints the outcome
-```
+`make test` and `make demo` both consume seed data (the tests truncate; the demo takes Class B's last seat). Run `make seed` to restore the fixtures. `make verify` runs typecheck, build and tests, then reseeds for you.
 
-The race demo consumes Class B's last seat. Re-run `npm run seed` to reset the fixtures.
+Every target is a thin wrapper over the npm scripts in `package.json`, which remain the source of truth — use those directly if you prefer.
 
 ### Roster API
 

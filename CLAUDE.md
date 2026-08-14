@@ -4,19 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+A `Makefile` wraps the npm scripts; `make` alone lists every target. The npm scripts in `package.json` are the source of truth — the Makefile adds the ordering for `make setup` (install → db up → migrate → seed) and a `make verify` (typecheck → build → test → reseed).
+
 ```bash
-npm run db:up        # Postgres 18 via Docker Compose, waits for healthy
-npm run db:migrate   # prisma migrate dev
-npm run seed         # truncates and reseeds the fixture classes
-npm run dev          # http://localhost:3000
-npm test             # full suite (real Postgres — db:up must be running first)
-npm run demo:race    # live last-seat race against the seeded DB
-npm run typecheck
+make setup           # clean checkout to running, seeded DB
+make up              # Postgres 18 via Docker Compose, waits for healthy
+make migrate         # prisma migrate dev
+make seed            # truncates and reseeds the fixture classes
+make dev             # http://localhost:3000
+make test            # full suite (brings the DB up first)
+make demo            # live last-seat race against the seeded DB
+make psql            # psql shell against the local database
 ```
 
 Run one test file: `npx vitest run tests/last-seat-race.test.ts`. One test by name: `npx vitest run -t "never overbooks"`.
 
-Tests and the seed both wipe the database, so **`npm test` destroys seed data** — re-run `npm run seed` afterwards before demoing. Prefer `npm run seed` over `prisma migrate reset`; the latter is blocked for AI agents without explicit user consent.
+Tests and the seed both wipe the database, so **`make test` destroys seed data** — run `make seed` afterwards before demoing. Prefer `make seed` over `make reset`; the latter calls `prisma migrate reset`, which is blocked for AI agents without explicit user consent.
 
 ## Stack
 
