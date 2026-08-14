@@ -66,6 +66,14 @@ make           # list every target
 
 Every target is a thin wrapper over the npm scripts in `package.json`, which remain the source of truth — use those directly if you prefer.
 
+### Reproducing the race in the browser
+
+The booking form has two buttons. **Book & pay** does both steps at once; **Reserve only** stops at `PENDING_PAYMENT` without paying, and a pending booking gets a **Pay now** control in "Your bookings". That split is what makes the PRD's scenario reproducible by hand:
+
+1. Pick a class with one seat left (Class B in the seed) and **Reserve only**.
+2. Switch parent in the "Viewing as" row, and **Reserve only** the same class again. The seat counter has not moved — reserving claims nothing.
+3. Pay both. One gets **Confirmed**, the other **Seat taken — refunding**, and the class lands exactly at capacity.
+
 ### Roster API
 
 ```bash

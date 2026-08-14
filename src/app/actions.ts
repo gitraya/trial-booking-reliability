@@ -13,15 +13,25 @@ import type { PaymentOutcome } from "@/lib/payment";
 
 export type ActionState = { message: string; tone: "ok" | "error" } | null;
 
-export async function bookAndPayAction(
+function forcedOutcome(value: FormDataEntryValue | null): PaymentOutcome | undefined {
+  return value === "succeed" || value === "fail" ? value : undefined;
+}
+
+/**
+ * Handles both halves of the booking flow, selected by the `intent` field —
+ * which is carried by the submit button's own name/value.
+ *
+ * `reserve` stops at PENDING_PAYMENT without paying. That is what makes the
+ * last-seat race reproducible from the UI: reserve as two different parents,
+ * then pay both. `book` is the one-step convenience path.
+ */
+export async function bookingAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const studentId = String(formData.get("studentId") ?? "");
   const classId = String(formData.get("classId") ?? "");
-  const outcome = formData.get("outcome");
-  const forced: PaymentOutcome | undefined =
-    outcome === "succeed" || outcome === "fail" ? outcome : undefined;
+  const reserveOnly = formData.get("intent") === "reserve";
 
   if (!studentId || !classId) {
     return { message: "Pick a student and a class.", tone: "error" };
@@ -32,14 +42,43 @@ export async function bookAndPayAction(
     return { message: created.message, tone: "error" };
   }
 
-  const confirmed = await confirmBooking(created.bookingId, forced);
+  if (reserveOnly) {
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return {
+      message:
+        "Reserved — awaiting payment. No seat is held yet; it is claimed when you pay.",
+      tone: "ok",
+    };
+  }
+
+  const confirmed = await confirmBooking(
+    created.bookingId,
+    forcedOutcome(formData.get("outcome")),
+  );
   revalidatePath("/");
   revalidatePath("/admin");
 
-  if (confirmed.ok) {
-    return { message: "Booking confirmed — the seat is yours.", tone: "ok" };
-  }
-  return { message: confirmed.message, tone: "error" };
+  return confirmed.ok
+    ? { message: "Booking confirmed — the seat is yours.", tone: "ok" }
+    : { message: confirmed.message, tone: "error" };
+}
+
+/** Pay for a booking that is already sitting in PENDING_PAYMENT. */
+export async function payBookingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const bookingId = String(formData.get("bookingId") ?? "");
+  if (!bookingId) return { message: "Missing booking.", tone: "error" };
+
+  const result = await confirmBooking(bookingId, forcedOutcome(formData.get("outcome")));
+  revalidatePath("/");
+  revalidatePath("/admin");
+
+  return result.ok
+    ? { message: "Payment taken — seat confirmed.", tone: "ok" }
+    : { message: result.message, tone: "error" };
 }
 
 export async function cancelBookingAction(

@@ -396,6 +396,30 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Inline pay control inside the bookings table */
+form.pay {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+form.pay select,
+form.pay button {
+  font-size: 0.82rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+}
+
+form.pay button {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+form.pay button:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
 /* ---------- Messages ---------- */
 
 .msg {
@@ -412,6 +436,15 @@ button:disabled {
 .msg .icon {
   flex: none;
   font-weight: 700;
+}
+
+/* Compact variant for use inside a table cell */
+.msg.inline {
+  display: inline-flex;
+  margin-top: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  max-width: 34ch;
 }
 
 .msg.ok {

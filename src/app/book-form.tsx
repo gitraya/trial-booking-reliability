@@ -1,13 +1,18 @@
 "use client";
 
 import { useActionState } from "react";
-import { bookAndPayAction, type ActionState } from "./actions";
+import { bookingAction, type ActionState } from "./actions";
 
 type Student = { id: string; name: string };
 
 /**
- * Booking form. The payment outcome selector exists so the failure path and
- * the last-seat race are demonstrable on camera — see docs/PRD.md §2.
+ * Booking form.
+ *
+ * Two submit buttons share one action; the `intent` is carried by the button's
+ * own name/value. "Reserve" stops at PENDING_PAYMENT so the payment step can be
+ * triggered separately — that is what makes the last-seat race demonstrable
+ * from the UI. The payment outcome selector exists so the failure path is
+ * deterministic. See docs/PRD.md §2.
  */
 export function BookForm({
   classId,
@@ -19,9 +24,10 @@ export function BookForm({
   full: boolean;
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
-    bookAndPayAction,
+    bookingAction,
     null,
   );
+  const disabled = pending || students.length === 0;
 
   return (
     <>
@@ -42,12 +48,12 @@ export function BookForm({
           <option value="random">Random (~85% success)</option>
         </select>
 
-        <button
-          type="submit"
-          className={full ? "secondary" : ""}
-          disabled={pending || students.length === 0}
-        >
+        <button type="submit" name="intent" value="book" className={full ? "secondary" : ""} disabled={disabled}>
           {pending ? "Processing…" : full ? "Join anyway (class is full)" : "Book & pay"}
+        </button>
+
+        <button type="submit" name="intent" value="reserve" className="ghost" disabled={disabled}>
+          Reserve only
         </button>
       </form>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BookForm } from "./book-form";
+import { PayForm } from "./pay-form";
 import { SeatMeter, StatusBadge, accentVars, subjectEmoji } from "./ui";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +117,7 @@ export default async function Home({
                 <th>Student</th>
                 <th>Class</th>
                 <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -125,6 +127,13 @@ export default async function Home({
                   <td>{b.class.subject}</td>
                   <td>
                     <StatusBadge status={b.status} />
+                  </td>
+                  <td>
+                    {b.status === "PENDING_PAYMENT" ? (
+                      <PayForm bookingId={b.id} />
+                    ) : (
+                      <span className="empty">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
