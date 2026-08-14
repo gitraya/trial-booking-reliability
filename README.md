@@ -55,7 +55,7 @@ make dev       # http://localhost:3000
 Then:
 
 ```bash
-make test      # 29 tests against real Postgres
+make test      # 34 tests against real Postgres
 make demo      # live last-seat race, prints the outcome
 make           # list every target
 ```
@@ -195,7 +195,7 @@ The bold cells are the ones that actually hold. Everything else is convenience.
 
 ## Tests
 
-29 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
+34 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
 
 | File | Covers |
 |---|---|
@@ -205,11 +205,14 @@ The bold cells are the ones that actually hold. Everything else is convenience.
 | `tests/overbooking.test.ts` | full class blocked, **and blocked with the soft check bypassed** |
 | `tests/malformed-ids.test.ts` | malformed ids return not-found rather than throwing (see IDs above) |
 | `tests/create-class.test.ts` | admin class creation: validation, and that the seat counter always starts at 0 |
+| `tests/cancel-during-booking.test.ts` | cancellation racing payment — the only place the counter moves both ways at once |
 
 Two of these are worth calling out:
 
 - **The soft-check bypass test** inserts a `PENDING_PAYMENT` booking directly into the database, skipping `createBooking`'s capacity check entirely, then pays. It still gets `SEAT_UNAVAILABLE`. This proves the application-level check is not load-bearing.
 - **The 10-payer race is the test that actually catches regressions.** I verified this by swapping the atomic `UPDATE` for a naive read-then-update: the 2-payer test still passed, while the 10-payer test confirmed 7 bookings into a 2-seat class. The narrow version of the race is not reliably reproducible; the wide one is.
+
+**What is not covered:** these tests exercise `src/lib`, not the HTTP layer. The roster route, the health endpoint, the server actions and the React components have no automated tests — they were verified by hand against a running server. A route-level test would have caught the malformed-id 500 automatically instead of by manual re-checking.
 
 Every test that touches seats also asserts **no drift** — that `confirmedCount` still equals `COUNT(*) WHERE status = 'CONFIRMED'`.
 

@@ -39,7 +39,7 @@ Note this is the second time a green test was hiding a real concurrency bug here
 
 Not by reading it and agreeing with it.
 
-1. **`npm test`** — 29 tests against real Postgres, not a mock. The property under test is Postgres's row-level write atomicity; a mocked database would only test my beliefs about it.
+1. **`npm test`** — 34 tests against real Postgres, not a mock. The property under test is Postgres's row-level write atomicity; a mocked database would only test my beliefs about it.
 2. **Deliberate regression.** Replaced the atomic `UPDATE` with the naive implementation and confirmed the suite goes red (documented above). A test that never fails proves nothing.
 3. **Invariant assertion everywhere.** Every seat-touching test calls `assertNoDrift`, checking both that `confirmedCount == COUNT(*) WHERE CONFIRMED` and that the count never exceeds capacity.
 4. **Ran the real app.** Built it, started the production server, seeded it, and verified the roster endpoint's JSON, its 404 path, the booking page, and the admin page's reconciliation output against live data.
