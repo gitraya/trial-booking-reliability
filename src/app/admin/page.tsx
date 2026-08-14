@@ -1,8 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { CancelButton } from "../cancel-button";
+import { NewClassForm } from "../new-class-form";
 import { SeatMeter, StatusBadge, accentVars, subjectEmoji } from "../ui";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Default for the datetime-local input: a week out, on the hour. Formatted as
+ * local time without a timezone suffix, which is what the input expects.
+ */
+function defaultStartsAt() {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  d.setHours(16, 0, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 /**
  * Admin roster view. Shows the confirmed roster per class alongside the
@@ -30,6 +43,12 @@ export default async function Admin() {
         Confirmed students only. The same data is available as JSON at{" "}
         <code>GET /api/classes/[id]/roster</code>.
       </p>
+
+      <NewClassForm defaultStartsAt={defaultStartsAt()} />
+
+      <h2 style={{ marginTop: "2rem" }}>
+        All classes <span className="count">{classes.length}</span>
+      </h2>
 
       {classes.map((c, i) => {
         const confirmed = c.bookings.filter((b) => b.status === "CONFIRMED");

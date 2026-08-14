@@ -55,7 +55,7 @@ make dev       # http://localhost:3000
 Then:
 
 ```bash
-make test      # 23 tests against real Postgres
+make test      # 29 tests against real Postgres
 make demo      # live last-seat race, prints the outcome
 make           # list every target
 ```
@@ -67,6 +67,10 @@ make           # list every target
 Every target is a thin wrapper over the npm scripts in `package.json`, which remain the source of truth — use those directly if you prefer.
 
 ### Reproducing the race in the browser
+
+The admin page has a **Create a trial class** form for testing beyond the seed fixtures. Capacity defaults to **1**, which makes the race a two-click demo: two parents reserving that class are immediately racing for the only seat, with no setup.
+
+Note what the form deliberately does *not* offer: a field for the seat counter. `confirmedCount` only ever moves through the booking flow — letting an admin type a starting value would manufacture exactly the drift the reconciliation check exists to detect.
 
 The booking form has two buttons. **Book & pay** does both steps at once; **Reserve only** stops at `PENDING_PAYMENT` without paying, and a pending booking gets a **Pay now** control in "Your bookings". That split is what makes the PRD's scenario reproducible by hand:
 
@@ -191,7 +195,7 @@ The bold cells are the ones that actually hold. Everything else is convenience.
 
 ## Tests
 
-23 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
+29 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
 
 | File | Covers |
 |---|---|
@@ -200,6 +204,7 @@ The bold cells are the ones that actually hold. Everything else is convenience.
 | `tests/payment-failure.test.ts` | failure leaves the counter untouched, audit trail, **spammed pay button (8 concurrent)** |
 | `tests/overbooking.test.ts` | full class blocked, **and blocked with the soft check bypassed** |
 | `tests/malformed-ids.test.ts` | malformed ids return not-found rather than throwing (see IDs above) |
+| `tests/create-class.test.ts` | admin class creation: validation, and that the seat counter always starts at 0 |
 
 Two of these are worth calling out:
 

@@ -396,6 +396,67 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Admin: create-class form */
+form.new-class {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+form.new-class label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 190px;
+}
+
+form.new-class label.narrow {
+  flex: 0 0 110px;
+}
+
+form.new-class label span {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+form.new-class input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  width: 100%;
+}
+
+form.new-class input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+form.new-class button {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  padding: 0.48rem 0.9rem;
+}
+
+form.new-class button:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+@media (max-width: 560px) {
+  form.new-class label,
+  form.new-class label.narrow {
+    flex: 1 1 100%;
+  }
+  form.new-class button {
+    width: 100%;
+  }
+}
+
 /* Inline pay control inside the bookings table */
 form.pay {
   display: flex;

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { cancelBooking, confirmBooking, createBooking } from "@/lib/bookings";
+import { createTrialClass } from "@/lib/classes";
 import type { PaymentOutcome } from "@/lib/payment";
 
 /**
@@ -79,6 +80,29 @@ export async function payBookingAction(
   return result.ok
     ? { message: "Payment taken — seat confirmed.", tone: "ok" }
     : { message: result.message, tone: "error" };
+}
+
+/**
+ * Admin: create an extra trial class for testing, on top of the seed fixtures.
+ * Capacity is settable; the seat counter is not — see createTrialClass.
+ */
+export async function createClassAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const result = await createTrialClass({
+    subject: String(formData.get("subject") ?? ""),
+    startsAt: String(formData.get("startsAt") ?? ""),
+    capacity: String(formData.get("capacity") ?? ""),
+  });
+
+  if (!result.ok) {
+    return { message: result.message, tone: "error" };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { message: `Created "${result.subject}" — it now appears for parents.`, tone: "ok" };
 }
 
 export async function cancelBookingAction(

@@ -73,6 +73,10 @@ UUIDv7 (`@default(uuid(7))`) in native Postgres `uuid` columns — not cuid, not
 
 The trap: a `uuid` column **throws** on a malformed value rather than failing to match. Any id arriving from outside (URL segment, form field) must pass `isUuid()` from `src/lib/ids.ts` before it reaches Prisma, or a typo becomes a 500 instead of a 404. `createBooking`, `confirmBooking`, `cancelBooking` and the roster route all guard; new entry points must too. Pinned by `tests/malformed-ids.test.ts`.
 
+### Creating classes
+
+`src/lib/classes.ts` backs the admin create-class form. `confirmedCount` is **not** an input and always starts at 0 — an admin-settable counter would manufacture drift by design. If asked to add a "pre-filled class" shortcut, push back: create a small capacity and fill it through the booking flow instead.
+
 ### Duplicate prevention
 
 The authoritative guard is a **partial unique index hand-written into the generated migration SQL** (not expressible in `schema.prisma`, and deliberately not using Prisma's `partialIndexes` preview feature):
