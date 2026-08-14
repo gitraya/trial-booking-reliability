@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { confirmBooking, createBooking } from "@/lib/bookings";
 import { createTrialClass } from "@/lib/classes";
+import { MAX_CLASS_CAPACITY } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 import { assertNoDrift, makeStudent, resetDb, seatCount } from "./helpers";
 
@@ -55,13 +56,29 @@ describe("creating a trial class", () => {
   });
 
   it("rejects capacities that are not a sensible whole number", async () => {
-    for (const capacity of ["0", "-3", "2.5", "abc", "", "   ", "51"]) {
+    const tooBig = String(MAX_CLASS_CAPACITY + 1);
+    for (const capacity of ["0", "-3", "2.5", "abc", "", "   ", tooBig]) {
       const result = await createTrialClass({ ...validInput, capacity });
       expect(result.ok, `capacity ${JSON.stringify(capacity)} should be rejected`).toBe(
         false,
       );
     }
     expect(await prisma.trialClass.count()).toBe(0);
+  });
+
+  it("accepts exactly the maximum capacity", async () => {
+    // Pins the boundary itself, so an off-by-one in the comparison shows up.
+    const atMax = await createTrialClass({
+      ...validInput,
+      capacity: String(MAX_CLASS_CAPACITY),
+    });
+    expect(atMax.ok).toBe(true);
+    if (!atMax.ok) return;
+
+    const created = await prisma.trialClass.findUniqueOrThrow({
+      where: { id: atMax.classId },
+    });
+    expect(created.capacity).toBe(MAX_CLASS_CAPACITY);
   });
 
   it("rejects a missing or unparseable start time", async () => {

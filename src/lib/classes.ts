@@ -1,3 +1,4 @@
+import { MAX_CLASS_CAPACITY } from "@/lib/config";
 import { prisma } from "@/lib/prisma";
 
 export type CreateClassInput = {
@@ -10,7 +11,6 @@ export type CreateClassResult =
   | { ok: true; classId: string; subject: string }
   | { ok: false; message: string };
 
-export const MAX_CAPACITY = 50;
 const MAX_SUBJECT = 80;
 
 /**
@@ -40,10 +40,10 @@ export async function createTrialClass(
     return { ok: false, message: "Capacity is required." };
   }
   const capacity = Number(rawCapacity);
-  if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_CAPACITY) {
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_CLASS_CAPACITY) {
     return {
       ok: false,
-      message: `Capacity must be a whole number between 1 and ${MAX_CAPACITY}.`,
+      message: `Capacity must be a whole number between 1 and ${MAX_CLASS_CAPACITY}.`,
     };
   }
 

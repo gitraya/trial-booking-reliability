@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { MAX_CLASS_CAPACITY } from "@/lib/config";
 import { createClassAction, type ActionState } from "./actions";
 
 /**
@@ -55,7 +56,14 @@ export function NewClassForm({ defaultStartsAt }: { defaultStartsAt: string }) {
 
         <label className="narrow">
           <span>Capacity</span>
-          <input name="capacity" type="number" min={1} max={50} required defaultValue={1} />
+          <input
+            name="capacity"
+            type="number"
+            min={1}
+            max={MAX_CLASS_CAPACITY}
+            required
+            defaultValue={1}
+          />
         </label>
 
         <button type="submit" disabled={pending}>
