@@ -55,7 +55,7 @@ make dev       # http://localhost:3000
 Then:
 
 ```bash
-make test      # 22 tests against real Postgres
+make test      # 23 tests against real Postgres
 make demo      # live last-seat race, prints the outcome
 make           # list every target
 ```
@@ -123,6 +123,22 @@ Walking the exact scenario: A and B both hold `PENDING_PAYMENT` bookings against
 
 The whole thing lives in `src/lib/bookings.ts`.
 
+### Two serialization points, not one
+
+The seat claim above stops different bookings from overrunning capacity. It does **not** stop *one* booking from being paid several times at once — a double-clicked pay button. A plain re-read inside the transaction is not enough there: under READ COMMITTED an unlocked `SELECT` takes a snapshot, so every concurrent call reads `PENDING_PAYMENT`, passes the check, and goes on to claim its own seat.
+
+So `confirmBooking` claims the booking row first:
+
+```sql
+SELECT id, "classId" FROM "Booking"
+WHERE id = $1 AND status = 'PENDING_PAYMENT'
+FOR UPDATE
+```
+
+The first transaction locks the row; the rest block, and when it commits they re-evaluate the predicate against the new committed version, no longer match, and bail out before touching a seat. One booking, one seat, one charge.
+
+This was a real bug, not a hypothetical: firing 8 concurrent payments at one booking produced 8 confirmations, 8 seats and 8 payment records. Two concurrent calls did not reproduce it, which is why the test now uses eight.
+
 ### Seats are claimed at payment, not at booking
 
 Booking creation never touches `confirmedCount`. Both parents are *allowed* to reach the payment step for one remaining seat — that is the brief's own scenario, and pretending otherwise would just move the race earlier. As a consequence, overbooking prevention and the last-seat race are the same mechanism, not two features.
@@ -175,13 +191,13 @@ The bold cells are the ones that actually hold. Everything else is convenience.
 
 ## Tests
 
-22 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
+23 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
 
 | File | Covers |
 |---|---|
 | `tests/last-seat-race.test.ts` | 2-payer race, 10-payer race, seat release on cancel, double-cancel |
 | `tests/duplicate-booking.test.ts` | duplicates incl. simultaneous, retry after failure, rebook after cancel |
-| `tests/payment-failure.test.ts` | failure leaves the counter untouched, audit trail, double-clicked pay |
+| `tests/payment-failure.test.ts` | failure leaves the counter untouched, audit trail, **spammed pay button (8 concurrent)** |
 | `tests/overbooking.test.ts` | full class blocked, **and blocked with the soft check bypassed** |
 | `tests/malformed-ids.test.ts` | malformed ids return not-found rather than throwing (see IDs above) |
 

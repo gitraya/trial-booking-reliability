@@ -56,6 +56,7 @@ WHERE id = $1 AND "confirmedCount" < capacity RETURNING id
 Zero rows returned means the seat was claimed by someone else between payment and confirmation. Consequences for anyone writing code here:
 
 - **Never do check-then-act.** Reading `confirmedCount`, comparing to `capacity` in TypeScript, then updating is the exact bug this design eliminates. Application-level "is there room?" checks are UX only and must never gate the write.
+- **A plain re-read inside a transaction is not a lock.** Under READ COMMITTED an unlocked `SELECT` is a snapshot read, so N concurrent callers all see the same pre-state and all proceed. `confirmBooking` therefore claims the booking row with `SELECT ... FOR UPDATE ... WHERE status = 'PENDING_PAYMENT'` before touching a seat. Removing that reintroduces one booking consuming N seats and N charges — it was a real bug, not a precaution.
 - **Never mutate `Booking.status` to or from `CONFIRMED` outside this transaction.** Any path that does silently drifts `confirmedCount` from reality. Cancellation must decrement.
 - The seat is claimed at **payment-confirmation time, not booking-creation time**. Booking creation deliberately never touches `confirmedCount`; two users are allowed to both reach the payment step for one seat. Overbooking prevention and the last-seat race are therefore the same mechanism, not two features.
 - `ReadCommitted` (Prisma's default) is sufficient — atomicity comes from the UPDATE's WHERE clause, not the isolation level. Don't add explicit locks or bump isolation.
@@ -87,6 +88,8 @@ If a migration is ever regenerated, this statement must be re-added by hand. `cr
 ## Testing
 
 Concurrency tests must run against a **real Postgres instance**, never a mock — the guarantee under test is Postgres's row-level write atomicity.
+
+**Concurrency tests need enough contenders.** This has bitten twice: two racers left both the seat-claim regression and the double-click regression undetected. When adding a concurrency test, use ~8 concurrent operations, and verify it fails against deliberately broken code before trusting it.
 
 **The two-payer race test is not sufficient on its own.** Verified empirically: swapping the atomic UPDATE for a naive read-then-update leaves the two-payer test green while the ten-payer test in `tests/last-seat-race.test.ts` catches it (7 confirmed in a 2-seat class). Don't delete the ten-payer test, and don't trust a green suite here without re-checking it against a deliberately broken implementation.
 

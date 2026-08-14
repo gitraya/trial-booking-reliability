@@ -124,18 +124,34 @@ export async function confirmBooking(
   const payment = await charge(bookingId, forcedOutcome);
 
   const result = await prisma.$transaction(async (tx) => {
-    // Re-read inside the transaction. Guards against two concurrent
-    // confirmBooking calls for the SAME booking (a double-clicked pay button)
-    // both getting past the pre-charge check above.
-    const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
-    if (booking.status !== "PENDING_PAYMENT") {
+    // ---- Claim the booking itself, atomically --------------------------
+    // A plain re-read is NOT enough here. Under READ COMMITTED an unlocked
+    // SELECT takes a snapshot, so N concurrent confirmations of the SAME
+    // booking (a double-clicked pay button) all read PENDING_PAYMENT, all pass
+    // the check, and all go on to claim a seat — one booking, N seats, N
+    // charges. That was a real bug, found by firing 8 concurrent payments at
+    // one booking; two were not enough to reproduce it.
+    //
+    // FOR UPDATE makes this the serialization point. The first transaction
+    // locks the row; the others block, and when it commits they re-evaluate
+    // the WHERE against the new committed version (Postgres re-checks the
+    // qual on the updated row). The status is no longer PENDING_PAYMENT, so
+    // they match zero rows and bail out here, before touching any seat.
+    const claimedBooking = await tx.$queryRaw<{ id: string; classId: string }[]>`
+      SELECT id, "classId" FROM "Booking"
+      WHERE id = ${bookingId} AND status = 'PENDING_PAYMENT'
+      FOR UPDATE
+    `;
+
+    if (claimedBooking.length === 0) {
       return {
         ok: false as const,
         status: "INVALID" as const,
         bookingId,
-        message: `Booking is ${booking.status}, not payable.`,
+        message: "Booking is no longer awaiting payment.",
       };
     }
+    const booking = claimedBooking[0];
 
     await tx.paymentAttempt.create({
       data: {

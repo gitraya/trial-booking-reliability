@@ -9,7 +9,7 @@
 
 **Scaffolding and boilerplate.** The Docker Compose file, Prisma schema translation, seed script, Next.js layout/CSS, and the roster route were near-instant. None of it is interesting work, and all of it was correct on the first or second pass.
 
-**Test breadth.** The PRD specified four test scenarios. The implementation ended up with 22, because it was cheap to ask for the adjacent cases that matter: the double-clicked pay button, the double cancel, rebooking after a cancellation, the audit-trail assertion. Several of those found nothing — but the double-click-pay case is a real concurrency hole that the PRD's original four tests would not have covered.
+**Test breadth.** The PRD specified four test scenarios. The implementation ended up with 23, because it was cheap to ask for the adjacent cases that matter: the double-clicked pay button, the double cancel, rebooking after a cancellation, the audit-trail assertion. Several of those found nothing — but the double-click-pay case is a real concurrency hole that the PRD's original four tests would not have covered.
 
 **Writing the adversarial test.** The "bypass the soft check by inserting a `PENDING_PAYMENT` row directly, then pay" test is the kind of thing that is easy to describe and tedious to write. It took one prompt.
 
@@ -25,20 +25,27 @@ This is the single most useful thing I did in the whole build, and it is worth b
 
 **4. Postgres 18 changed its data directory convention.** The generated `docker-compose.yml` mounted the volume at `/var/lib/postgresql/data`, which is correct for Postgres ≤17 and makes the 18 image crash-loop on startup. Caught immediately because `docker compose up --wait` reported the container unhealthy rather than silently continuing.
 
-**5. Rejected: `SELECT ... FOR UPDATE`.** An early instinct was to lock the class row before checking capacity. It works, but it is strictly worse than the conditional `UPDATE`: more round trips, a lock held for the duration of the transaction, and deadlock potential once more than one row is involved. The single-statement version needs no lock at all.
+**5. Rejected: `SELECT ... FOR UPDATE` for the seat claim.** An early instinct was to lock the class row before checking capacity. It works, but it is strictly worse than the conditional `UPDATE`: more round trips, a lock held for the duration of the transaction, and deadlock potential once more than one row is involved. The single-statement version needs no lock at all.
+
+Worth being precise, given correction #7 below: this rejection is about the **class** row. The **booking** row does use `FOR UPDATE`, because there the claim has to be held across later statements in the same transaction rather than expressed as one conditional write. Different problems, different tools.
 
 **6. Switching cuid to UUIDv7 introduced a 500 that no test would have caught.** Making the id columns native Postgres `uuid` changed the failure mode of a bad id: with text keys `not-a-uuid` was a lookup that found nothing, but a `uuid` column rejects it as a syntax error before matching, so Prisma throws. The roster endpoint went from returning 404 to returning 500, and I only found it because I re-ran the endpoint checks against the running app after the migration rather than trusting a green suite. Fixed with a shape check at every entry point that takes an id from outside, and pinned by `tests/malformed-ids.test.ts`.
+
+**7. The double-click guard did not actually work.** `confirmBooking` re-read the booking inside its transaction and checked the status, with a comment claiming this stopped concurrent payments for the same booking. It did not: under READ COMMITTED an unlocked SELECT is a snapshot read, so all concurrent callers see PENDING_PAYMENT and all proceed. Firing 8 concurrent payments at one booking produced **8 confirmations, 8 seats and 8 payment records**. The existing test used two concurrent calls and passed — the same "not enough racers" trap as #2, in the same codebase, which I had already been burned by once. Fixed by claiming the booking row with `SELECT ... FOR UPDATE` before touching a seat; the test now uses eight and was verified to fail against the old code.
+
+Note this is the second time a green test was hiding a real concurrency bug here. Concurrency tests need enough contenders to make the interleaving likely, and the only way to know is to break the code deliberately and watch them fail.
 
 ## How the implementation was verified
 
 Not by reading it and agreeing with it.
 
-1. **`npm test`** — 22 tests against real Postgres, not a mock. The property under test is Postgres's row-level write atomicity; a mocked database would only test my beliefs about it.
+1. **`npm test`** — 23 tests against real Postgres, not a mock. The property under test is Postgres's row-level write atomicity; a mocked database would only test my beliefs about it.
 2. **Deliberate regression.** Replaced the atomic `UPDATE` with the naive implementation and confirmed the suite goes red (documented above). A test that never fails proves nothing.
 3. **Invariant assertion everywhere.** Every seat-touching test calls `assertNoDrift`, checking both that `confirmedCount == COUNT(*) WHERE CONFIRMED` and that the count never exceeds capacity.
 4. **Ran the real app.** Built it, started the production server, seeded it, and verified the roster endpoint's JSON, its 404 path, the booking page, and the admin page's reconciliation output against live data.
 5. **Verified the index in the database, not the schema.** Ran `\d "Booking"` in psql to confirm the partial unique index exists with the right predicate — it is hand-written SQL, so the Prisma schema is not evidence that it landed.
-6. **`npm run demo:race`** against the seeded database, reproducing the PRD's exact scenario end to end.
+6. **Adversarial concurrency probing.** Beyond the suite, I ran ad-hoc stress scripts firing 8 concurrent operations at a single row, repeated over several rounds. That is what surfaced correction #7 — the suite was green at the time.
+7. **`npm run demo:race`** against the seeded database, reproducing the PRD's exact scenario end to end.
 
 ## What I would change next time
 
