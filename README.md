@@ -8,9 +8,44 @@ Stack: Next.js 16 (App Router) · React 19 · TypeScript 7 · Prisma 7 · Postgr
 
 ---
 
-## Run it
+## Requirements
 
-Requires Docker and Node 20+.
+| Need | Version | Why |
+|---|---|---|
+| **Node.js** | `^20.19` · `^22.12` · `>=24` | Prisma 7 sets the floor — it is stricter than Next 16's `>=20.9`. Node 20.0–20.18 will fail. |
+| **npm** | 10+ | Ships with Node. |
+| **Docker** | Engine 24+ with **Compose v2** | Runs Postgres 18. Invoked as `docker compose` (space, not hyphen). Docker Desktop covers both. |
+| **GNU Make** | any | Only for the `make` shortcuts. Preinstalled on macOS and Linux — see the Windows note below. |
+
+Also needed:
+
+- **Free ports `5432` and `3000`.** Postgres publishes 5432 to the host so tests and scripts can reach it. If you already run Postgres locally, stop it or change the host-side port in `docker-compose.yml`.
+- **~1.5 GB disk** for `node_modules` and the Postgres image.
+- **Docker must be running** before `make setup` — `make up` waits for the container to report healthy and will otherwise hang until it times out.
+
+Check all of it in one go — `make setup` runs this first and stops with a specific message rather than a confusing failure later:
+
+```bash
+make preflight
+```
+
+```
+Checking prerequisites...
+  ok    Node 24.12.0
+  ok    Docker 28.4.0
+  ok    port 5432 free
+  ok    port 3000 free
+```
+
+Verified on macOS 15 (Apple Silicon) with Node 24.12.0, npm 11.6.2, Docker 28.4.0 and Compose v2.39.2.
+
+**Windows:** everything works, but `make` is not installed by default. Either run under WSL2, or skip the Makefile and use the npm scripts directly — they are the source of truth, and each `make` target maps to one. `make setup` is just the preflight check followed by `npm install && npm run db:up && npm run db:migrate && npm run seed`.
+
+`jq` in the roster example below is optional — it only pretty-prints the JSON.
+
+No database, Postgres client, or Prisma CLI needs to be installed on the host — Postgres runs in the container, and the Prisma CLI comes in as a dev dependency.
+
+## Run it
 
 ```bash
 make setup     # install, start Postgres, migrate, seed — clean checkout to ready

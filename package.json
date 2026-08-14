@@ -1,8 +1,10 @@
 {
   "name": "trial-booking-reliability",
   "version": "0.1.0",
-  "directories": {
-    "doc": "docs"
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19 || ^22.12 || >=24"
   },
   "scripts": {
     "dev": "next dev",
@@ -19,8 +21,6 @@
     "test:watch": "vitest",
     "demo:race": "tsx scripts/demo-race.ts"
   },
-  "type": "module",
-  "private": true,
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
@@ -37,5 +37,8 @@
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
+  },
+  "directories": {
+    "doc": "docs"
   }
 }

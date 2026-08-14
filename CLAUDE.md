@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A `Makefile` wraps the npm scripts; `make` alone lists every target. The npm scripts in `package.json` are the source of truth — the Makefile adds the ordering for `make setup` (install → db up → migrate → seed) and a `make verify` (typecheck → build → test → reseed).
 
+Node floor is `^20.19 || ^22.12 || >=24` (Prisma 7, stricter than Next's `>=20.9`), and Docker must be running. `make preflight` checks both plus ports 5432/3000; `make setup` runs it first.
+
 ```bash
 make setup           # clean checkout to running, seeded DB
 make up              # Postgres 18 via Docker Compose, waits for healthy

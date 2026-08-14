@@ -5,7 +5,7 @@
 # running, seeded app in one command (`make setup`).
 
 .DEFAULT_GOAL := help
-.PHONY: help setup install up down dev build start migrate seed reset test test-watch demo typecheck psql logs verify clean nuke
+.PHONY: help preflight setup install up down dev build start migrate seed reset test test-watch demo typecheck psql logs verify clean nuke
 
 ## help: show this list
 help:
@@ -17,8 +17,30 @@ help:
 
 # --- setup -----------------------------------------------------------------
 
+## preflight: check Node, Docker and ports before doing anything
+preflight:
+	@echo "Checking prerequisites..."
+	@command -v node >/dev/null 2>&1 || { echo "  FAIL  node not found — install Node ^20.19, ^22.12 or >=24."; exit 1; }
+	@# No '$' anywhere in this script: make would expand it as a variable.
+	@node -e 'var v=process.versions.node, p=v.split(".").map(Number); \
+	  var ok=(p[0]===20&&p[1]>=19)||(p[0]===22&&p[1]>=12)||p[0]>=24; \
+	  if(!ok){console.error("  FAIL  Node "+v+" - need ^20.19, ^22.12 or >=24 (Prisma 7 sets this floor).");process.exit(1);} \
+	  console.log("  ok    Node "+v)'
+	@command -v docker >/dev/null 2>&1 || { echo "  FAIL  docker not found — install Docker Desktop or Docker Engine."; exit 1; }
+	@docker compose version >/dev/null 2>&1 || { echo "  FAIL  'docker compose' (v2) not available. The hyphenated docker-compose v1 will not work."; exit 1; }
+	@docker info >/dev/null 2>&1 || { echo "  FAIL  Docker is installed but not running — start it and retry."; exit 1; }
+	@echo "  ok    Docker $$(docker version --format '{{.Server.Version}}' 2>/dev/null)"
+	@docker compose ps --status running --services 2>/dev/null | grep -q '^db$$' \
+	  && echo "  ok    port 5432 (already ours)" \
+	  || { lsof -iTCP:5432 -sTCP:LISTEN >/dev/null 2>&1 \
+	       && { echo "  FAIL  port 5432 is in use by something else — stop it or change the host port in docker-compose.yml."; exit 1; } \
+	       || echo "  ok    port 5432 free"; }
+	@lsof -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1 \
+	  && echo "  warn  port 3000 in use — 'make dev' will pick another port" \
+	  || echo "  ok    port 3000 free"
+
 ## setup: clean checkout -> running, seeded database (start here)
-setup: install up migrate seed
+setup: preflight install up migrate seed
 	@echo ""
 	@echo "Ready. Next:"
 	@echo "  make dev        # http://localhost:3000"
