@@ -12,6 +12,23 @@ import { prisma } from "../src/lib/prisma.ts";
  * from a clean seed.
  */
 async function main() {
+  // This script DELETES EVERY ROW before seeding. Fine locally and in CI,
+  // catastrophic against a deployed database.
+  //
+  // The guard keys off the target host rather than NODE_ENV, because the way
+  // this actually goes wrong is someone running `npm run seed` on their laptop
+  // with a production DATABASE_URL in the environment — where NODE_ENV is
+  // still "development" and would wave it straight through.
+  const url = process.env.DATABASE_URL ?? "";
+  const isLocal = /@(localhost|127\.0\.0\.1|db):/.test(url);
+  if (!isLocal && process.env.ALLOW_DESTRUCTIVE_SEED !== "yes") {
+    throw new Error(
+      `Refusing to seed a non-local database (${url.replace(/:[^:@/]*@/, ":***@")}). ` +
+        "This script deletes every row first. If you really mean it, set " +
+        "ALLOW_DESTRUCTIVE_SEED=yes.",
+    );
+  }
+
   // Order matters: PaymentAttempt -> Booking -> Student/TrialClass -> Parent.
   await prisma.paymentAttempt.deleteMany();
   await prisma.booking.deleteMany();

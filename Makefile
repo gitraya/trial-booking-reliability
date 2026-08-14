@@ -5,7 +5,7 @@
 # running, seeded app in one command (`make setup`).
 
 .DEFAULT_GOAL := help
-.PHONY: help preflight setup install up down dev build start migrate seed reset test test-watch demo typecheck psql logs verify clean nuke
+.PHONY: help preflight setup install up down dev build start migrate seed reset test test-watch demo typecheck psql logs verify docker-build docker-run docker-stop clean nuke
 
 ## help: show this list
 help:
@@ -116,6 +116,26 @@ verify: typecheck build test seed
 ## demo: live last-seat race against the seeded database
 demo:
 	npm run demo:race
+
+# --- deployment ------------------------------------------------------------
+
+## docker-build: build the production image Coolify will build
+docker-build:
+	docker build -t trial-booking:local .
+
+## docker-run: run that image against the local Postgres on :3100
+docker-run: docker-build up
+	@docker rm -f trial-booking-app >/dev/null 2>&1 || true
+	docker run -d --name trial-booking-app \
+	  --network trial-booking-reliability_default \
+	  -p 3100:3000 \
+	  -e DATABASE_URL="postgresql://trial:trial@db:5432/trial_booking?schema=public" \
+	  trial-booking:local
+	@echo "Started on http://localhost:3100 — logs: docker logs -f trial-booking-app"
+
+## docker-stop: stop and remove that container
+docker-stop:
+	@docker rm -f trial-booking-app >/dev/null 2>&1 && echo "stopped" || echo "not running"
 
 # --- cleanup ---------------------------------------------------------------
 

@@ -1,0 +1,21 @@
+node_modules
+.next
+.git
+.github
+# The committed .env holds local Docker Compose credentials and has no business
+# in an image — the Dockerfile sets a build placeholder and the runtime gets
+# DATABASE_URL from Coolify.
+.env
+.env.local
+.env*.local
+tests
+scripts
+docs
+*.md
+Makefile
+docker-compose.yml
+.DS_Store
+*.log
+src/generated
+.claude
+skills-lock.json

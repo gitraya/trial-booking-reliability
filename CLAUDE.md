@@ -21,6 +21,17 @@ make psql            # psql shell against the local database
 
 Run one test file: `npx vitest run tests/last-seat-race.test.ts`. One test by name: `npx vitest run -t "never overbooks"`.
 
+There is no lint script — `next lint` was removed in Next 16 and no ESLint config was set up in its place. CI runs typecheck, build and tests.
+
+## Deployment
+
+Single container from `Dockerfile`, deployed by Coolify; see `docs/DEPLOYMENT.md`. Things that will bite:
+
+- `docker-entrypoint.sh` runs `prisma migrate deploy` on every start. Never `migrate dev` or `migrate reset` there.
+- The runtime image gets a **separately installed** Prisma CLI (its own build stage), because the CLI's dependency closure is hoisted and cannot be cherry-picked out of the build stage's `node_modules`. Do not try to slim it by deleting `@prisma/studio-core` or `@prisma/dev` — `prisma/build/cli.js` requires both eagerly at load, and removing either breaks every deploy.
+- The runtime uses `prisma.config.production.ts` (copied in as `prisma.config.ts`) because the dev config imports `dotenv`, which isn't in the image.
+- The seed script refuses to run against a non-local `DATABASE_URL` without `ALLOW_DESTRUCTIVE_SEED=yes`, since it deletes every row first.
+
 Tests and the seed both wipe the database, so **`make test` destroys seed data** — run `make seed` afterwards before demoing. Prefer `make seed` over `make reset`; the latter calls `prisma migrate reset`, which is blocked for AI agents without explicit user consent.
 
 ## Stack

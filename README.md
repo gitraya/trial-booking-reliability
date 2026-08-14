@@ -74,6 +74,26 @@ curl "http://localhost:3000/api/classes/<classId>/roster" | jq
 
 Returns the confirmed roster plus a `reconciliation` block comparing the denormalized counter against an actual `COUNT(*)` — the drift check, exposed so the invariant can be verified by hand.
 
+### Deploying
+
+Ships as a single container from the repo's `Dockerfile`, built by Coolify from source. **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** has the full walkthrough; the short version:
+
+- One required variable: `DATABASE_URL`. Port `3000`, health check `/api/health`.
+- `prisma migrate deploy` runs on every container start, before the server accepts traffic. A schema change ships by committing a migration.
+- The health check queries the database, so a container that can't reach Postgres reports `503` instead of quietly serving errors.
+- The seed script is **not** in the runtime image and refuses to run against a non-local database — it deletes every row before inserting.
+
+Build and run it locally the way production does:
+
+```bash
+make docker-build
+make docker-run     # http://localhost:3100, against the local Postgres
+```
+
+### CI
+
+`.github/workflows/ci.yml` runs on every push and PR: typecheck, build, and the full suite against a real Postgres 18 service container. It also asserts that **`booking_active_unique` exists in the database with the right predicate** — that index is hand-written into the migration SQL, so it is the one piece of the schema that could silently disappear when migrations are regenerated. A second job builds the production image, so a broken `Dockerfile` is caught before it reaches the VPS.
+
 ---
 
 ## The core problem and the solution
