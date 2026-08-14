@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isUuid } from "@/lib/ids";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -17,6 +18,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  // The id column is a Postgres uuid, so a malformed value would throw rather
+  // than miss. Treat it as "not found", which is what it is.
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "Class not found" }, { status: 404 });
+  }
 
   const trialClass = await prisma.trialClass.findUnique({
     where: { id },

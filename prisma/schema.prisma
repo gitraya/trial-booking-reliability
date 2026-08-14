@@ -14,15 +14,15 @@ datasource db {
 }
 
 model Parent {
-  id       String    @id @default(cuid())
+  id       String    @id @default(uuid(7)) @db.Uuid
   name     String
   email    String    @unique
   students Student[]
 }
 
 model Student {
-  id       String    @id @default(cuid())
-  parentId String
+  id       String    @id @default(uuid(7)) @db.Uuid
+  parentId String    @db.Uuid
   parent   Parent    @relation(fields: [parentId], references: [id])
   name     String
   bookings Booking[]
@@ -31,7 +31,7 @@ model Student {
 }
 
 model TrialClass {
-  id       String   @id @default(cuid())
+  id       String   @id @default(uuid(7)) @db.Uuid
   subject  String
   startsAt DateTime
   capacity Int      @default(4)
@@ -55,10 +55,10 @@ enum BookingStatus {
 }
 
 model Booking {
-  id        String           @id @default(cuid())
-  studentId String
+  id        String           @id @default(uuid(7)) @db.Uuid
+  studentId String           @db.Uuid
   student   Student          @relation(fields: [studentId], references: [id])
-  classId   String
+  classId   String           @db.Uuid
   class     TrialClass       @relation(fields: [classId], references: [id])
   status    BookingStatus    @default(PENDING_PAYMENT)
   createdAt DateTime         @default(now())
@@ -81,8 +81,8 @@ enum PaymentStatus {
 }
 
 model PaymentAttempt {
-  id        String        @id @default(cuid())
-  bookingId String
+  id        String        @id @default(uuid(7)) @db.Uuid
+  bookingId String        @db.Uuid
   booking   Booking       @relation(fields: [bookingId], references: [id])
   status    PaymentStatus
   /// Minor units (cents).

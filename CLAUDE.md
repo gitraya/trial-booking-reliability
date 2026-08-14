@@ -66,6 +66,12 @@ Zero rows returned means the seat was claimed by someone else between payment an
 
 `SEAT_UNAVAILABLE` means *payment succeeded but the seat was gone* — money moved, seat didn't. Keep it distinct from `PAYMENT_FAILED`; collapsing them hides the case the project is graded on. It should log a refund intent (real refund execution is out of scope).
 
+### IDs
+
+UUIDv7 (`@default(uuid(7))`) in native Postgres `uuid` columns — not cuid, not text. v7 is time-ordered, so inserts stay at the hot end of the index.
+
+The trap: a `uuid` column **throws** on a malformed value rather than failing to match. Any id arriving from outside (URL segment, form field) must pass `isUuid()` from `src/lib/ids.ts` before it reaches Prisma, or a typo becomes a 500 instead of a 404. `createBooking`, `confirmBooking`, `cancelBooking` and the roster route all guard; new entry points must too. Pinned by `tests/malformed-ids.test.ts`.
+
 ### Duplicate prevention
 
 The authoritative guard is a **partial unique index hand-written into the generated migration SQL** (not expressible in `schema.prisma`, and deliberately not using Prisma's `partialIndexes` preview feature):

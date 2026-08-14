@@ -6,7 +6,7 @@ CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'SUCCEEDED', 'FAILED');
 
 -- CreateTable
 CREATE TABLE "Parent" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
 
@@ -15,8 +15,8 @@ CREATE TABLE "Parent" (
 
 -- CreateTable
 CREATE TABLE "Student" (
-    "id" TEXT NOT NULL,
-    "parentId" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "parentId" UUID NOT NULL,
     "name" TEXT NOT NULL,
 
     CONSTRAINT "Student_pkey" PRIMARY KEY ("id")
@@ -24,7 +24,7 @@ CREATE TABLE "Student" (
 
 -- CreateTable
 CREATE TABLE "TrialClass" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "subject" TEXT NOT NULL,
     "startsAt" TIMESTAMP(3) NOT NULL,
     "capacity" INTEGER NOT NULL DEFAULT 4,
@@ -35,9 +35,9 @@ CREATE TABLE "TrialClass" (
 
 -- CreateTable
 CREATE TABLE "Booking" (
-    "id" TEXT NOT NULL,
-    "studentId" TEXT NOT NULL,
-    "classId" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "studentId" UUID NOT NULL,
+    "classId" UUID NOT NULL,
     "status" "BookingStatus" NOT NULL DEFAULT 'PENDING_PAYMENT',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -47,8 +47,8 @@ CREATE TABLE "Booking" (
 
 -- CreateTable
 CREATE TABLE "PaymentAttempt" (
-    "id" TEXT NOT NULL,
-    "bookingId" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "bookingId" UUID NOT NULL,
     "status" "PaymentStatus" NOT NULL,
     "amount" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -55,7 +55,7 @@ make dev       # http://localhost:3000
 Then:
 
 ```bash
-make test      # 17 tests against real Postgres
+make test      # 22 tests against real Postgres
 make demo      # live last-seat race, prints the outcome
 make           # list every target
 ```
@@ -154,6 +154,12 @@ WHERE "status" IN ('PENDING_PAYMENT', 'CONFIRMED');
 
 A student holds at most one *live* booking per class. Terminal statuses fall outside the predicate, so a retry after a failure or a cancellation is allowed — that is the point of making it partial. Prisma's schema language can't express a partial index, so it is **hand-written into the migration SQL** and must be re-added if migrations are ever regenerated.
 
+### IDs
+
+Primary keys are **UUIDv7** in native Postgres `uuid` columns (16 bytes, not a 36-char string). v7 embeds a millisecond timestamp in its leading bits, so new rows sort to the end of the index instead of scattering across it the way v4 or cuid2 would — inserts stay in a hot page rather than dirtying the whole B-tree.
+
+One consequence worth knowing, because it is not obvious: a `uuid` column does not *miss* on a malformed id, it **throws** — Postgres rejects `not-a-uuid` as a syntax error before any row matching happens. With text keys a bad id was just a lookup that found nothing. So every entry point that takes an id from outside (URL segment, form field) checks the shape via `isUuid()` first, or a typo in the address bar returns 500 instead of 404. `tests/malformed-ids.test.ts` pins that behaviour.
+
 ### Where each check lives
 
 | Check | UI | Server action | DB |
@@ -169,7 +175,7 @@ The bold cells are the ones that actually hold. Everything else is convenience.
 
 ## Tests
 
-17 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
+22 tests, all against real Postgres — the guarantee under test is Postgres's row-level write atomicity, which a mocked database cannot reproduce.
 
 | File | Covers |
 |---|---|
@@ -177,6 +183,7 @@ The bold cells are the ones that actually hold. Everything else is convenience.
 | `tests/duplicate-booking.test.ts` | duplicates incl. simultaneous, retry after failure, rebook after cancel |
 | `tests/payment-failure.test.ts` | failure leaves the counter untouched, audit trail, double-clicked pay |
 | `tests/overbooking.test.ts` | full class blocked, **and blocked with the soft check bypassed** |
+| `tests/malformed-ids.test.ts` | malformed ids return not-found rather than throwing (see IDs above) |
 
 Two of these are worth calling out:
 

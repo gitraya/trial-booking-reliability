@@ -9,7 +9,7 @@
 
 **Scaffolding and boilerplate.** The Docker Compose file, Prisma schema translation, seed script, Next.js layout/CSS, and the roster route were near-instant. None of it is interesting work, and all of it was correct on the first or second pass.
 
-**Test breadth.** The PRD specified four test scenarios. The implementation ended up with 17, because it was cheap to ask for the adjacent cases that matter: the double-clicked pay button, the double cancel, rebooking after a cancellation, the audit-trail assertion. Several of those found nothing — but the double-click-pay case is a real concurrency hole that the PRD's original four tests would not have covered.
+**Test breadth.** The PRD specified four test scenarios. The implementation ended up with 22, because it was cheap to ask for the adjacent cases that matter: the double-clicked pay button, the double cancel, rebooking after a cancellation, the audit-trail assertion. Several of those found nothing — but the double-click-pay case is a real concurrency hole that the PRD's original four tests would not have covered.
 
 **Writing the adversarial test.** The "bypass the soft check by inserting a `PENDING_PAYMENT` row directly, then pay" test is the kind of thing that is easy to describe and tedious to write. It took one prompt.
 
@@ -27,11 +27,13 @@ This is the single most useful thing I did in the whole build, and it is worth b
 
 **5. Rejected: `SELECT ... FOR UPDATE`.** An early instinct was to lock the class row before checking capacity. It works, but it is strictly worse than the conditional `UPDATE`: more round trips, a lock held for the duration of the transaction, and deadlock potential once more than one row is involved. The single-statement version needs no lock at all.
 
+**6. Switching cuid to UUIDv7 introduced a 500 that no test would have caught.** Making the id columns native Postgres `uuid` changed the failure mode of a bad id: with text keys `not-a-uuid` was a lookup that found nothing, but a `uuid` column rejects it as a syntax error before matching, so Prisma throws. The roster endpoint went from returning 404 to returning 500, and I only found it because I re-ran the endpoint checks against the running app after the migration rather than trusting a green suite. Fixed with a shape check at every entry point that takes an id from outside, and pinned by `tests/malformed-ids.test.ts`.
+
 ## How the implementation was verified
 
 Not by reading it and agreeing with it.
 
-1. **`npm test`** — 17 tests against real Postgres, not a mock. The property under test is Postgres's row-level write atomicity; a mocked database would only test my beliefs about it.
+1. **`npm test`** — 22 tests against real Postgres, not a mock. The property under test is Postgres's row-level write atomicity; a mocked database would only test my beliefs about it.
 2. **Deliberate regression.** Replaced the atomic `UPDATE` with the naive implementation and confirmed the suite goes red (documented above). A test that never fails proves nothing.
 3. **Invariant assertion everywhere.** Every seat-touching test calls `assertNoDrift`, checking both that `confirmedCount == COUNT(*) WHERE CONFIRMED` and that the count never exceeds capacity.
 4. **Ran the real app.** Built it, started the production server, seeded it, and verified the roster endpoint's JSON, its 404 path, the booking page, and the admin page's reconciliation output against live data.
@@ -42,5 +44,5 @@ Not by reading it and agreeing with it.
 
 - **Write the deliberate-regression check first.** Confirming that a test fails against a known-broken implementation should be part of writing the test, not a step at the end. It was luck that I did it at all, and it changed the test suite.
 - **Pin the invariant in the database, not in convention.** `confirmedCount` is currently protected by "every code path goes through these two functions." A trigger would make that unbreakable, and would have been maybe twenty minutes.
-- **Check framework/library conventions before generating, not after.** Two of the five corrections above were version-drift issues found by running the code. Both were cheap here because the feedback loop was fast; on a larger surface they would not have been.
+- **Check framework/library conventions before generating, not after.** Several of the corrections above were version-drift issues found by running the code. Both were cheap here because the feedback loop was fast; on a larger surface they would not have been.
 - **Be more skeptical of a green test suite generally.** The one that mattered was passing for the wrong reason.

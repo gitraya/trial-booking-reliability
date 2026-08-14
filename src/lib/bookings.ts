@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { TRIAL_PRICE } from "@/lib/config";
+import { isUuid } from "@/lib/ids";
 import { charge, refund, type PaymentOutcome } from "@/lib/payment";
 import { prisma } from "@/lib/prisma";
 
@@ -34,6 +35,11 @@ export async function createBooking(
   studentId: string,
   classId: string,
 ): Promise<CreateBookingResult> {
+  // ids are Postgres uuids: a malformed one throws instead of missing.
+  if (!isUuid(studentId) || !isUuid(classId)) {
+    return { ok: false, code: "NOT_FOUND", message: "That class does not exist." };
+  }
+
   const trialClass = await prisma.trialClass.findUnique({ where: { id: classId } });
   if (!trialClass) {
     return { ok: false, code: "NOT_FOUND", message: "That class does not exist." };
@@ -88,6 +94,15 @@ export async function confirmBooking(
   // The charge happens OUTSIDE the transaction on purpose: a real gateway call
   // is slow network I/O, and holding a database transaction open across it
   // would pin a connection and widen the window for lock contention.
+  if (!isUuid(bookingId)) {
+    return {
+      ok: false,
+      status: "INVALID",
+      bookingId,
+      message: "Booking not found.",
+    };
+  }
+
   const existing = await prisma.booking.findUnique({ where: { id: bookingId } });
   if (!existing) {
     return {
@@ -200,6 +215,10 @@ export async function confirmBooking(
 export async function cancelBooking(
   bookingId: string,
 ): Promise<{ ok: boolean; message: string }> {
+  if (!isUuid(bookingId)) {
+    return { ok: false, message: "Booking not found." };
+  }
+
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
 
