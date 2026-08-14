@@ -2,9 +2,23 @@
 
 A trial-class booking slice built around one question: **is the confirmed roster still correct when two parents pay for the last seat at the same millisecond?**
 
-Everything here optimizes for the correctness of the confirmed-seat count under concurrency and payment failure. The UI is deliberately plain.
+Everything here optimizes for the correctness of the confirmed-seat count under concurrency and payment failure. The UI is functional rather than a showcase.
 
 Stack: Next.js 16 (App Router) · React 19 · TypeScript 7 · Prisma 7 · PostgreSQL 18.
+
+---
+
+## What I built
+
+A working trial-booking slice: parents pick a child and a class, submit a booking, go through a mock payment, and see the resulting status; an admin sees the roster.
+
+The whole thing is built around one invariant — **the confirmed seat count is always correct** — and everything else is scaffolding around proving that.
+
+- **Parent flow** (`/`): choose a child, choose a class, book. Either **Book & pay** in one step, or **Reserve only** to stop at `PENDING_PAYMENT` and pay later — which is what makes the last-seat race reproducible by hand.
+- **Payment**: mocked, with a forced outcome selector (succeeds / fails / random) so the failure path and the race are deterministic on camera.
+- **Admin** (`/admin`): per-class roster, seat meter, cancel a seat, create extra classes for testing. Each class shows a live reconciliation check.
+- **Roster API**: `GET /api/classes/[id]/roster`, returning the confirmed roster plus that reconciliation block.
+- **34 tests** against real Postgres, covering every edge case in the brief plus the ones I found while probing.
 
 ---
 
@@ -107,6 +121,66 @@ make docker-run     # http://localhost:3100, against the local Postgres
 `.github/workflows/ci.yml` runs on every push and PR: typecheck, build, and the full suite against a real Postgres 18 service container. It also asserts that **`booking_active_unique` exists in the database with the right predicate** — that index is hand-written into the migration SQL, so it is the one piece of the schema that could silently disappear when migrations are regenerated. A second job builds the production image, so a broken `Dockerfile` is caught before it reaches the VPS.
 
 ---
+---
+
+## Backend design
+
+### Data model
+
+Five tables, deliberately small. Full definitions in [`prisma/schema.prisma`](prisma/schema.prisma).
+
+| Model | Purpose | Notable fields |
+|---|---|---|
+| `Parent` | Account holder | `email` unique |
+| `Student` | The child being booked | `parentId` |
+| `TrialClass` | A bookable session | `capacity` (default 4), **`confirmedCount`** |
+| `Booking` | One child's attempt at one class | `status`, partial unique index on `(studentId, classId)` |
+| `PaymentAttempt` | Audit trail of every charge | `status`, `amount` (minor units) |
+
+Primary keys are UUIDv7 in native Postgres `uuid` columns.
+
+**`TrialClass.confirmedCount` is the only source of truth for seat math.** It is denormalized on purpose — that is what makes the seat claim a single atomic statement. The cost is that it can drift if anything mutates `Booking.status` outside the two functions allowed to, which is why the reconciliation check is exposed on the roster endpoint and the admin page.
+
+### Booking statuses
+
+| Status | Meaning |
+|---|---|
+| `PENDING_PAYMENT` | Booked, not paid. **Holds no seat.** |
+| `CONFIRMED` | Paid and seated. The only status on the roster. |
+| `PAYMENT_FAILED` | Payment declined. No seat taken; the parent may retry. |
+| `SEAT_UNAVAILABLE` | Payment succeeded but the seat was gone. Money moved, seat didn't — refund logged. |
+| `CANCELLED` | Seat released, counter decremented. |
+
+`SEAT_UNAVAILABLE` is the one status not suggested in the brief. It is added because "payment succeeded but you can't have the seat" is a genuinely different outcome from a declined card, and collapsing the two would hide exactly the case this exercise is about.
+
+### Backend surface
+
+The correctness lives in `src/lib`; server actions and routes are thin callers.
+
+| Function (`src/lib/bookings.ts`) | Does |
+|---|---|
+| `createBooking(studentId, classId)` | Creates `PENDING_PAYMENT`. **Never touches `confirmedCount`.** Duplicates rejected by the DB index (`P2002`). |
+| `confirmBooking(bookingId, outcome?)` | Charges, then claims the booking row (`FOR UPDATE`), then claims a seat atomically. Returns `CONFIRMED` / `PAYMENT_FAILED` / `SEAT_UNAVAILABLE`. |
+| `cancelBooking(bookingId)` | Releases a confirmed seat and decrements, both conditionally. |
+
+| Server action (`src/app/actions.ts`) | Does |
+|---|---|
+| `bookingAction` | Book-and-pay, or reserve only (`intent` field) |
+| `payBookingAction` | Pay an existing `PENDING_PAYMENT` booking |
+| `cancelBookingAction` | Admin cancels a seat |
+| `createClassAction` | Admin creates a test class |
+
+| HTTP | Does |
+|---|---|
+| `GET /api/classes/[id]/roster` | Confirmed roster + reconciliation block |
+| `GET /api/health` | Liveness + database reachability (for the deploy) |
+
+### How payment failure is handled
+
+The charge happens **before** the transaction opens, because a real gateway is slow network I/O and holding a transaction across it pins a connection. Inside the transaction, a `PaymentAttempt` row is always written — success or failure — so the audit trail exists either way.
+
+On failure the booking becomes `PAYMENT_FAILED` and the transaction **returns before reaching the seat claim**. There is no code path where a failed payment can increment `confirmedCount`, which is the property the brief asks for. `PAYMENT_FAILED` sits outside the duplicate-booking index predicate, so the parent can immediately try again.
+
 
 ## The core problem and the solution
 
@@ -220,7 +294,9 @@ Every test that touches seats also asserts **no drift** — that `confirmedCount
 
 ## Time spent
 
-<!-- TODO: fill in actual wall-clock time before submitting. Budget was 3.5h (docs/PRD.md §11). -->
+> **TODO before submitting — fill in actual wall-clock time.** Budget was 3.5h (`docs/PRD.md` §11).
+> A rough split to adapt: schema + migration + seed · booking flow and duplicate guard · mock payment
+> and the atomic confirm · roster and admin · tests · README and AI_USAGE · video.
 
 ## Assumptions
 
