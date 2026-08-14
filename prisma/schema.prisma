@@ -1,0 +1,93 @@
+// Trial booking schema. See docs/PRD.md §3.
+//
+// The single most important thing in this file: TrialClass.confirmedCount is
+// the source of truth for seat math, and it is only ever mutated by the atomic
+// conditional UPDATE in src/lib/confirm-booking.ts. Nothing else may touch it.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Parent {
+  id       String    @id @default(cuid())
+  name     String
+  email    String    @unique
+  students Student[]
+}
+
+model Student {
+  id       String    @id @default(cuid())
+  parentId String
+  parent   Parent    @relation(fields: [parentId], references: [id])
+  name     String
+  bookings Booking[]
+
+  @@index([parentId])
+}
+
+model TrialClass {
+  id       String   @id @default(cuid())
+  subject  String
+  startsAt DateTime
+  capacity Int      @default(4)
+
+  /// Denormalized seat counter — the source of truth for seat math.
+  /// Only confirmBooking() and cancelBooking() may change this, and only via
+  /// an atomic conditional UPDATE. See docs/PRD.md §5.
+  confirmedCount Int @default(0)
+
+  bookings Booking[]
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  PAYMENT_FAILED
+  /// Payment succeeded but the seat was gone — money moved, seat didn't.
+  /// Deliberately distinct from PAYMENT_FAILED. See docs/PRD.md §4.
+  SEAT_UNAVAILABLE
+  CANCELLED
+}
+
+model Booking {
+  id        String           @id @default(cuid())
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  classId   String
+  class     TrialClass       @relation(fields: [classId], references: [id])
+  status    BookingStatus    @default(PENDING_PAYMENT)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  payments  PaymentAttempt[]
+
+  // The authoritative duplicate-booking guard is a PARTIAL unique index on
+  // (studentId, classId) WHERE status IN ('PENDING_PAYMENT','CONFIRMED').
+  // Prisma's schema language cannot express a partial index, so it is added by
+  // hand in the migration SQL. If you ever regenerate migrations from scratch,
+  // re-add it — see prisma/migrations/*/migration.sql and docs/PRD.md §3.
+  @@index([classId, status])
+  @@index([studentId])
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+model PaymentAttempt {
+  id        String        @id @default(cuid())
+  bookingId String
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+  status    PaymentStatus
+  /// Minor units (cents).
+  amount    Int
+  createdAt DateTime      @default(now())
+
+  @@index([bookingId])
+}

@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+build
+
+# Generated Prisma client
+/src/generated/prisma
+
+# Env — .env is committed here on purpose: it holds only the local Docker
+# Compose credentials, so `docker compose up && npm run db:reset` works with
+# zero configuration. A real deployment would use .env.local / real secrets.
+.env.local
+.env*.local
+
+.DS_Store
+*.log
+
+# Prisma CLI installs agent skill symlinks on `prisma init`; not part of the app.
+.claude/skills
+skills-lock.json
